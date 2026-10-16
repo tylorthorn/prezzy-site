@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Prezzy Studio — API 文件</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <div class="bg-orbs" aria-hidden="true"><div class="orb orb-a"></div><div class="orb orb-b"></div></div>
+  <main class="container" style="max-width:860px">
+    <a href="/" style="color:var(--accent2);font-size:13px;font-weight:600;text-decoration:none">← 返回生成工作台</a>
+    <h1 style="margin:14px 0 4px;font-size:26px">Prezzy Studio — OpenAI 相容 API</h1>
+    <p class="muted">Base URL: <code class="code" style="padding:3px 8px">https://prezzy-site.&lt;你的子域&gt;.workers.dev</code></p>
+    <p class="muted">無需註冊即可使用（匿名限流），或建立 API Key 取得更高額度。</p>
+
+    <div class="card" style="margin-top:20px">
+      <div class="card-title">POST /v1/images/generations（同步）</div>
+      <pre class="code">{
+  "model": "flux-klein",          // 見 GET /v1/models
+  "prompt": "a cute orange cat",
+  "size": "1024x1024",            // 或 1792x1024 / 1024x1792 / 1536x1024 …
+  "quality": "standard",          // 可選
+  "negative_prompt": "blurry",    // 可選（FAA 擴充）
+  "response_format": "url"        // url | b64_json
+}</pre>
+      <pre class="code">→ 200
+{
+  "created": 1730000000,
+  "data": [{ "url": "https://cdn-ap.rockhr.ai/...", "revised_prompt": null }],
+  "faa": { "upstream": "aiart", "upstreamModel": "Flux 2 Klein", "ratio": "1:1" }
+}</pre>
+    </div>
+
+    <div class="card" style="margin-top:20px">
+      <div class="card-title">POST /v1/videos/generations（非同步）</div>
+      <pre class="code">{
+  "model": "wan-2-2",   // wan-2-2 | hunyuan-1-5 | ltx-2
+  "prompt": "a cat walking through a neon street"
+}</pre>
+      <pre class="code">→ 202 { "id": "uuid", "object": "video", "status": "submitted" }
+→ 輪詢 GET /v1/jobs/:id（每 5 秒）直到 "status": "completed"，data[0].url 為影片位址</pre>
+    </div>
+
+    <div class="card" style="margin-top:20px">
+      <div class="card-title">其他端點</div>
+      <table style="width:100%;font-size:13.5px;border-collapse:collapse">
+        <tr style="color:var(--muted);text-align:left"><th style="padding:6px 0">Method</th><th>Path</th><th>說明</th></tr>
+        <tr><td style="padding:6px 0">GET</td><td><code>/v1/models</code></td><td>OpenAI list 格式模型清單</td></tr>
+        <tr><td>GET</td><td><code>/v1/media?url=</code></td><td>媒體代理（UI 渲染 / 下載，加 <code>&amp;download=1</code>）</td></tr>
+        <tr><td>GET</td><td><code>/v1/jobs/:id</code></td><td>影片任務輪詢</td></tr>
+        <tr><td>GET</td><td><code>/api/keys</code></td><td>管理 Key（需 Admin Token）</td></tr>
+        <tr><td>POST</td><td><code>/api/keys</code></td><td>建立 Key</td></tr>
+        <tr><td>DELETE</td><td><code>/api/keys/:id</code></td><td>撤銷 Key</td></tr>
+      </table>
+      <p class="muted" style="margin-top:10px">認證：<code>Authorization: Bearer sk_pz_...</code>；管理端點需 <code>X-Admin-Key: &lt;ADMIN_TOKEN&gt;</code></p>
+    </div>
+
+    <div class="card" style="margin-top:20px">
+      <div class="card-title">OpenAI SDK 範例</div>
+      <pre class="code">import OpenAI from "openai";
+const client = new OpenAI({
+  baseURL: "https://prezzy-site.&lt;子域&gt;.workers.dev/v1",
+  apiKey: "sk_pz_...",
+});
+const img = await client.images.generate({
+  model: "flux-klein", prompt: "a cute cat", size: "1024x1024",
+});
+console.log(img.data[0].url);</pre>
+    </div>
+  </main>
+  <footer class="foot">Prezzy Studio · 上游 prexzyapis.com</footer>
+</body>
+</html>

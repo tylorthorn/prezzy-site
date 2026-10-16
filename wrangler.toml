@@ -1,0 +1,31 @@
+# Prezzy Studio — Cloudflare Worker + static assets
+# Live: https://prezzy-site.<subdomain>.workers.dev
+#
+# Setup:
+#   npx wrangler kv namespace create KEYS      → fill id below
+#   npx wrangler secret put ADMIN_TOKEN        → admin key to manage API keys
+#   npm run deploy
+
+name = "prezzy-site"
+main = "src/index.js"
+compatibility_date = "2024-11-01"
+
+[assets]
+directory = "public"
+binding = "ASSETS"
+run_worker_first = true
+not_found_handling = "single-page-application"
+
+[vars]
+PREZZY_BASE_URL = "https://prexzyapis.com"
+# Allow requests without an API key (throttled). Set "false" to require a key.
+ANON_ALLOWED = "true"
+# Per-key request budget (sliding 60s window, tracked via Cache API).
+RATE_LIMIT_KEYED = "60"
+# Anonymous throttle (when ANON_ALLOWED = true).
+RATE_LIMIT_ANON = "10"
+
+[[kv_namespaces]]
+binding = "KEYS"
+id = "35d9cf700c6e4fb39a966c5103d00170"
+preview_id = "REPLACE_WITH_KV_PREVIEW_ID"

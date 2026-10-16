@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Prezzy Studio — AI 生成工作台</title>
+  <meta name="description" content="免費 AI 圖片 / 影片生成工作台 · OpenAI 相容 API · 部署於 Cloudflare Workers" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <div class="bg-orbs" aria-hidden="true">
+    <div class="orb orb-a"></div><div class="orb orb-b"></div><div class="orb orb-c"></div>
+  </div>
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-logo">PZ</div>
+      <div>
+        <div class="brand-name">Prezzy Studio</div>
+        <div class="brand-sub">AI 生成工作台 · OpenAI 相容</div>
+      </div>
+    </div>
+    <nav class="tabs" id="tabs">
+      <button class="tab active" data-tab="studio">🎨 生成</button>
+      <button class="tab" data-tab="video">🎬 影片</button>
+      <button class="tab" data-tab="api">🔑 API</button>
+      <button class="tab" data-tab="gallery">🖼️ 作品牆</button>
+    </nav>
+    <div class="top-right">
+      <span class="build-badge" id="build-badge">v0.1</span>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- ===================== 圖片生成 ===================== -->
+    <section class="panel active" id="panel-studio">
+      <div class="studio-grid">
+        <div class="card controls">
+          <div class="card-title">
+            <span>1 · 選擇模型</span>
+            <span class="hint" id="model-count"></span>
+          </div>
+          <div class="model-groups" id="model-groups"><!-- JS renders --></div>
+
+          <div class="card-title" style="margin-top:18px"><span>2 · 輸入提示詞</span></div>
+          <div class="prompt-box">
+            <textarea id="prompt" rows="3" placeholder="描述你想生成的畫面，例如：a cute orange cat wearing a wizard hat, soft studio lighting, cinematic"></textarea>
+            <div class="prompt-bar">
+              <span class="hint" id="prompt-count">0 字</span>
+              <div class="chips">
+                <button class="chip" data-prompt="a cute orange cat, soft light, bokeh">🐱 貓咪</button>
+                <button class="chip" data-prompt="cyberpunk city street at night, neon lights, rain">🌆 賽博龐克</button>
+                <button class="chip" data-prompt="majestic dragon flying over mountains, fantasy art">🐉 巨龍</button>
+                <button class="chip" data-prompt="portrait of a samurai, dramatic lighting, anime style">⚔️ 武士</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card-title" style="margin-top:18px"><span>3 · 畫面比例</span></div>
+          <div class="ratio-row" id="ratios"></div>
+
+          <details class="advanced">
+            <summary>進階參數</summary>
+            <div class="adv-grid">
+              <label>負面提示詞
+                <input id="negative-prompt" type="text" placeholder="blurry, deformed, low quality" />
+              </label>
+              <label>尺寸 (size)
+                <select id="size">
+                  <option value="1024x1024">1024×1024 (1:1)</option>
+                  <option value="1792x1024">1792×1024 (16:9)</option>
+                  <option value="1024x1792">1024×1792 (9:16)</option>
+                  <option value="1536x1024">1536×1024 (4:3)</option>
+                  <option value="1024x1536">1024×1536 (3:4)</option>
+                  <option value="768x1344">768×1344 (9:16)</option>
+                </select>
+              </label>
+              <label>回傳格式
+                <select id="response-format">
+                  <option value="url">url</option>
+                  <option value="b64_json">b64_json</option>
+                </select>
+              </label>
+            </div>
+          </details>
+
+          <button class="btn-generate" id="btn-generate">
+            <span class="spinner hidden" id="gen-spinner"></span>
+            <span id="gen-label">✨ 開始生成</span>
+          </button>
+          <div class="status" id="gen-status"></div>
+        </div>
+
+        <div class="card result">
+          <div class="card-title"><span>生成結果</span><span class="hint" id="result-meta">尚未生成</span></div>
+          <div class="preview empty" id="preview">
+            <div class="preview-placeholder">
+              <div class="ph-icon">🖼️</div>
+              <p>選擇模型並輸入提示詞，點擊「開始生成」</p>
+            </div>
+          </div>
+          <div class="result-actions hidden" id="result-actions">
+            <a class="btn btn-ghost" id="btn-open" href="#" target="_blank" rel="noopener">↗ 新分頁開啟</a>
+            <a class="btn btn-primary" id="btn-download" href="#" download="prezzy.png">⬇ 下載</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== 影片生成 ===================== -->
+    <section class="panel" id="panel-video">
+      <div class="studio-grid">
+        <div class="card controls">
+          <div class="card-title"><span>1 · 選擇引擎</span></div>
+          <div class="engine-cards" id="engines">
+            <label class="engine-card" data-engine="wan2_2">
+              <input type="radio" name="engine" value="wan2_2" checked hidden />
+              <div class="engine-name">Wan 2.2</div>
+              <div class="engine-desc">阿里通義萬相 · 平衡品質與速度</div>
+              <div class="engine-badge">預設</div>
+            </label>
+            <label class="engine-card" data-engine="hunyuan1_5">
+              <input type="radio" name="engine" value="hunyuan1_5" hidden />
+              <div class="engine-name">Hunyuan 1.5</div>
+              <div class="engine-desc">騰訊混元 · 電影感畫面</div>
+            </label>
+            <label class="engine-card" data-engine="ltx2">
+              <input type="radio" name="engine" value="ltx2" hidden />
+              <div class="engine-name">LTX 2</div>
+              <div class="engine-desc">Lightricks · 快速輕量</div>
+            </label>
+          </div>
+
+          <div class="card-title" style="margin-top:18px"><span>2 · 輸入提示詞</span></div>
+          <textarea id="video-prompt" rows="3" placeholder="描述影片內容，例如：a cat walking through a neon-lit street, camera follows slowly"></textarea>
+
+          <button class="btn-generate" id="btn-video">
+            <span class="spinner hidden" id="video-spinner"></span>
+            <span id="video-label">🎬 提交生成</span>
+          </button>
+          <div class="status" id="video-status"></div>
+        </div>
+
+        <div class="card result">
+          <div class="card-title"><span>任務狀態</span><span class="hint" id="video-meta"></span></div>
+          <div class="job-panel hidden" id="job-panel">
+            <div class="job-row">
+              <span>隊列位置</span><b id="job-queue">—</b>
+              <span>預估時間</span><b id="job-eta">—</b>
+              <span>狀態</span><b id="job-state">—</b>
+            </div>
+            <div class="progress"><div class="progress-bar" id="job-progress"></div></div>
+            <div class="hint" id="job-message"></div>
+          </div>
+          <div class="preview empty" id="video-preview">
+            <div class="preview-placeholder">
+              <div class="ph-icon">🎬</div>
+              <p>提交後自動輪詢，完成時自動播放</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== API 控制台 ===================== -->
+    <section class="panel" id="panel-api">
+      <div class="api-grid">
+        <div class="card">
+          <div class="card-title"><span>API Key 管理</span><span class="hint">管理員模式</span></div>
+          <div class="field">
+            <label>Admin Token（僅存於本機瀏覽器）</label>
+            <div class="row">
+              <input id="admin-token" type="password" placeholder="wrangler secret put ADMIN_TOKEN 的設定值" />
+              <button class="btn btn-secondary" id="btn-admin-save">儲存</button>
+            </div>
+          </div>
+          <div class="field">
+            <label>Key 名稱</label>
+            <div class="row">
+              <input id="key-name" type="text" placeholder="my-app" value="default" />
+              <button class="btn btn-primary" id="btn-key-create">建立 Key</button>
+            </div>
+          </div>
+          <div class="once-wrap hidden" id="once-wrap">
+            <label>新 Key（僅顯示一次）</label>
+            <div class="row">
+              <input id="once-key" type="text" readonly />
+              <button class="btn btn-secondary" id="btn-copy-key">複製</button>
+            </div>
+          </div>
+          <div class="status" id="key-status"></div>
+          <div id="key-list" class="key-list"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><span>呼叫範例</span></div>
+          <div class="field">
+            <label>你的 Base URL（自動帶入網域）</label>
+            <div class="row">
+              <input id="base-url" type="text" readonly />
+              <button class="btn btn-secondary" id="btn-copy-base">複製</button>
+            </div>
+          </div>
+          <pre class="code" id="code-sample">// 載入中…</pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== 作品牆 ===================== -->
+    <section class="panel" id="panel-gallery">
+      <div class="card">
+        <div class="card-title">
+          <span>我的作品</span>
+          <span class="hint" id="gallery-count"></span>
+          <button class="btn btn-danger btn-sm" id="btn-gallery-clear">清空</button>
+        </div>
+        <div class="gallery-grid" id="gallery-grid">
+          <p class="muted">尚無作品，先去生成一張吧！</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    Prezzy Studio · 上游 <a href="https://prexzyapis.com" target="_blank" rel="noopener">prexzyapis.com</a> · 免費免 Key · 部署於 Cloudflare Workers
+  </footer>
+
+  <div class="toast" id="toast"></div>
+  <script src="/js/app.js"></script>
+</body>
+</html>
